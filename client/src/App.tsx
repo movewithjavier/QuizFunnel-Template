@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import QuizPage from "./pages/QuizPage";
 import ResultsPage from "./pages/ResultsPage";
 import DetailsPage from "./pages/DetailsPage";
+import SharedResultsPage from "./pages/SharedResultsPage";
 
 function App() {
   return (
@@ -9,6 +10,7 @@ function App() {
       <Route path="/" component={QuizPage} />
       <Route path="/results/:id" component={ResultsPage} />
       <Route path="/details/:id" component={DetailsPage} />
+      <Route path="/shared/:id" component={SharedResultsPage} />
       <Route component={NotFound} />
     </Switch>
   );
