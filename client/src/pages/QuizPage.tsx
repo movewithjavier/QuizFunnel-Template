@@ -40,32 +40,44 @@ export default function QuizPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">{quizConfig.title}</CardTitle>
-          <Progress value={progress} className="mt-4" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-xl shadow-lg border-primary/10">
+        <CardHeader className="space-y-4">
+          <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            {quizConfig.title}
+          </CardTitle>
+          <Progress value={progress} className="h-2" />
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">{question.text}</h2>
+            <h2 className="text-xl font-semibold text-foreground">
+              {question.text}
+            </h2>
             <RadioGroup
               value={responses[question.id]}
               onValueChange={(value) => {
                 setResponses(prev => ({...prev, [question.id]: value}));
               }}
+              className="space-y-3"
             >
               {question.options.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
+                <div key={option.value} 
+                  className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent transition-colors">
                   <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value}>{option.label}</Label>
+                  <Label 
+                    htmlFor={option.value}
+                    className="flex-grow cursor-pointer"
+                  >
+                    {option.label}
+                  </Label>
                 </div>
               ))}
             </RadioGroup>
             <Button 
-              className="w-full"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleNext}
               disabled={!responses[question.id]}
+              size="lg"
             >
               {currentQuestion < quizConfig.questions.length - 1 ? "Next" : "See Results"}
             </Button>

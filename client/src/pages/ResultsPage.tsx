@@ -51,33 +51,40 @@ export default function ResultsPage() {
   };
 
   if (!session) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary">Loading...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-xl shadow-lg border-primary/10">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Your Results</CardTitle>
+          <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            Your Results
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-primary">{session.score}</h2>
-              <p className="mt-2 text-gray-600">
+              <p className="mt-2 text-muted-foreground">
                 Based on your responses, here's your initial assessment.
               </p>
             </div>
             <div className="flex flex-col gap-3">
               <Button 
-                className="w-full"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => setLocation(`/details/${sessionId}`)}
+                size="lg"
               >
                 Get Detailed Analysis
               </Button>
               <Button 
                 variant="outline"
-                className="w-full"
+                className="w-full border-primary/20 hover:bg-primary/5"
                 onClick={handleShare}
               >
                 <Share2 className="w-4 h-4 mr-2" />
