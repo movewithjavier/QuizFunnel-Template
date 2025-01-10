@@ -22,6 +22,8 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  log("Setting up Vite development server...");
+  
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
@@ -41,7 +43,6 @@ export async function setupVite(app: Express, server: Server) {
           return;
         } else {
           viteLogger.error(msg, options);
-          process.exit(1);
         }
       },
     },
@@ -49,34 +50,52 @@ export async function setupVite(app: Express, server: Server) {
       middlewareMode: true,
       hmr: { server },
     },
-    appType: "custom",
+    appType: "spa",
   });
 
+  log("Vite server created, setting up middleware...");
+
+  // Use Vite's connect instance as middleware
   app.use(vite.middlewares);
+
+  // Add a middleware to log all requests
+  app.use((req, res, next) => {
+    log(`${req.method} ${req.url}`, "express");
+    next();
+  });
+
+  // Handle all non-API routes by serving index.html
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
-    try {
-      const clientTemplate = path.resolve(
-        __dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+    // Skip API routes
+    if (url.startsWith("/api")) {
+      return next();
+    }
 
-      // always reload the index.html file from disk incase it changes
-      const template = await fs.promises.readFile(clientTemplate, "utf-8");
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+    try {
+      let template = fs.readFileSync(
+        path.resolve(__dirname, "../client/index.html"),
+        "utf-8"
+      );
+      
+      // Apply Vite HTML transforms
+      template = await vite.transformIndexHtml(url, template);
+      
+      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      log(`Served transformed index.html for ${url}`, "vite");
     } catch (e) {
+      log(`Error serving index.html: ${e}`, "vite");
       vite.ssrFixStacktrace(e as Error);
       next(e);
     }
   });
+
+  log("Vite middleware setup complete");
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  const distPath = path.resolve(__dirname, "../dist");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -86,7 +105,6 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });

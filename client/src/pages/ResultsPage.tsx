@@ -1,99 +1,116 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { Share2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Modal } from "@/components/ui/modal";
+import { LeadForm } from "@/components/LeadForm";
+import { quizConfig } from "../config/quiz";
 import type { QuizSession } from "../types/quiz";
 
 export default function ResultsPage() {
+  const [showLeadForm, setShowLeadForm] = useState(false);
   const [, setLocation] = useLocation();
-  const sessionId = window.location.pathname.split("/").pop();
-  const { toast } = useToast();
+  const quizId = window.location.pathname.split("/").pop() || "";
 
-  const { data: session } = useQuery<QuizSession>({
-    queryKey: [`/api/quiz/results/${sessionId}`],
+  const { data: session, isLoading } = useQuery<QuizSession>({
+    queryKey: ["quiz", "results", quizId],
+    queryFn: async () => {
+      const res = await fetch(`/api/quiz/results/${quizId}`);
+      if (!res.ok) {
+        throw new Error("Failed to fetch results");
+      }
+      return res.json();
+    },
   });
 
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/shared/${sessionId}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'My Quiz Results',
-          text: `Check out my quiz results: ${session?.score}`,
-          url: shareUrl,
-        });
-      } catch (err) {
-        // Fall back to clipboard if share was cancelled
-        await copyToClipboard(shareUrl);
-      }
-    } else {
-      await copyToClipboard(shareUrl);
-    }
+  const handleLeadSuccess = () => {
+    setShowLeadForm(false);
   };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Link copied!",
-        description: "Share it with your friends",
-      });
-    } catch (err) {
-      toast({
-        title: "Failed to copy link",
-        description: "Please try again",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-primary">Loading...</div>
-      </div>
-    );
-  }
+  const interpretation = session?.score ? quizConfig.results.scoreInterpretations[session.score] : null;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl shadow-lg border-primary/10">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-            Your Results
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-primary">{session.score}</h2>
-              <p className="mt-2 text-muted-foreground">
-                Based on your responses, here's your initial assessment.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Button 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={() => setLocation(`/details/${sessionId}`)}
-                size="lg"
-              >
-                Get Detailed Analysis
-              </Button>
-              <Button 
-                variant="outline"
-                className="w-full border-primary/20 hover:bg-primary/5"
-                onClick={handleShare}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Share Results
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">{quizConfig.results.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-20 w-full" />
+              </>
+            ) : session && interpretation ? (
+              <>
+                <div className="text-center space-y-4">
+                  <div className="text-2xl font-bold text-primary">
+                    {interpretation.title}
+                  </div>
+                  <p className="text-gray-600">
+                    {interpretation.description}
+                  </p>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-3">Key Recommendations</h3>
+                    <ul className="space-y-2">
+                      {interpretation.recommendations.map((rec, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Your Responses</h3>
+                    {Object.entries(session.responses).map(([questionId, answer]) => {
+                      const question = quizConfig.questions.find(q => q.id === questionId);
+                      if (!question) return null;
+                      
+                      let displayAnswer = answer;
+                      if (question.type === 'multiple-choice') {
+                        const option = question.options.find(opt => opt.value === answer);
+                        if (option) displayAnswer = option.label;
+                      }
+
+                      return (
+                        <div key={questionId} className="bg-gray-50 p-4 rounded-lg">
+                          <div className="font-medium">{question.text}</div>
+                          <div className="text-gray-600">Your answer: {displayAnswer}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <Button 
+                    onClick={() => setLocation(`/strategy/${quizId}`)} 
+                    className="w-full"
+                    variant="default"
+                  >
+                    Get Your Detailed Strategy
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p className="text-center text-gray-600">No results available</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Modal isOpen={showLeadForm} onClose={() => setShowLeadForm(false)}>
+        <LeadForm quizId={quizId} onSuccess={handleLeadSuccess} />
+      </Modal>
     </div>
   );
 }

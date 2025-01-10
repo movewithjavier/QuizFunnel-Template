@@ -1,65 +1,61 @@
-import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import type { Lead } from "../types/quiz";
+import { Modal } from "@/components/ui/modal";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { QuizDetails } from "../types/quiz";
 
-export default function DetailsPage() {
-  const [, setLocation] = useLocation();
-  const sessionId = parseInt(window.location.pathname.split("/").pop() || "0");
+interface DetailsPageProps {
+  quizId: string;
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Lead>();
-
-  const submitLead = useMutation({
-    mutationFn: async (data: Lead) => {
-      const res = await fetch("/api/leads/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, sessionId }),
-      });
+export default function DetailsPage({ quizId, isOpen, onClose }: DetailsPageProps) {
+  const { data: details, isLoading } = useQuery<QuizDetails>({
+    queryKey: ["quiz", "details", quizId],
+    queryFn: async () => {
+      const res = await fetch(`/api/quiz/${quizId}/details`);
       return res.json();
-    },
-    onSuccess: () => {
-      // Redirect to thank you or download page
-      setLocation("/thank-you");
     },
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl">
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <Card className="border-0 shadow-none">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Get Your Detailed Analysis</CardTitle>
+          <CardTitle>Detailed Analysis</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit((data) => submitLead.mutate(data))} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                {...register("email", { required: true })}
-              />
-              {errors.email && (
-                <span className="text-sm text-red-500">Email is required</span>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Name (Optional)</Label>
-              <Input
-                id="name"
-                {...register("name")}
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Get Analysis
-            </Button>
-          </form>
+        <CardContent className="space-y-6">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-20 w-full" />
+            </>
+          ) : details ? (
+            <>
+              <div>
+                <h3 className="font-semibold mb-2">Key Insights</h3>
+                <p className="text-gray-600">{details.insights}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Recommendations</h3>
+                <ul className="list-disc pl-5 space-y-2 text-gray-600">
+                  {details.recommendations.map((rec, index) => (
+                    <li key={index}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Next Steps</h3>
+                <p className="text-gray-600">{details.nextSteps}</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-gray-600">No details available</p>
+          )}
         </CardContent>
       </Card>
-    </div>
+    </Modal>
   );
 }

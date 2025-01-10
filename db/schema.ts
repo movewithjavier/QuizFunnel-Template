@@ -1,8 +1,8 @@
-import { pgTable, text, serial, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const quizSessions = pgTable("quiz_sessions", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   startedAt: timestamp("started_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
   responses: jsonb("responses").$type<Record<string, string>>(),
@@ -10,8 +10,8 @@ export const quizSessions = pgTable("quiz_sessions", {
 });
 
 export const leads = pgTable("leads", {
-  id: serial("id").primaryKey(),
-  sessionId: serial("session_id").references(() => quizSessions.id),
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id").references(() => quizSessions.id),
   email: text("email").notNull(),
   name: text("name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
